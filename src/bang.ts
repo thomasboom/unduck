@@ -12,6 +12,15 @@ export const bangs = [
   },
   {
     c: "AI",
+    d: "www.ecosia.org/",
+    r: 0,
+    s: "Ecosia AI Search",
+    sc: "AI",
+    t: "eai",
+    u: "https://www.ecosia.org/ai-search?q={{{s}}}",
+  },
+  {
+    c: "AI",
     d: "chat.openai.com",
     r: 0,
     s: "ChatGPT",
