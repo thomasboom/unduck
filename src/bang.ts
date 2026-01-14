@@ -12,6 +12,15 @@ export const bangs = [
   },
   {
     c: "AI",
+    d: "www.lumo.proton.me",
+    r: 0,
+    s: "Proton Lumo",
+    sc: "AI",
+    t: "lumo",
+    u: "https://lumo.proton.me/?q={{{s}}}",
+  },
+  {
+    c: "AI",
     d: "www.ecosia.org/",
     r: 0,
     s: "Ecosia AI Search",
