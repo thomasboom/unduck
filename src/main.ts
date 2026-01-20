@@ -7,26 +7,38 @@ function renderMainPage() {
   app.innerHTML = `
     <div class="main-bg">
       <button id="settings-link" class="settings-button-top" title="Settings">
-        <img src="/settings.svg" alt="Settings" />
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
       </button>
       <div class="search-container">
-        <div class="search-header">
-          <img src="/search.svg" alt="Unduck logo" class="logo" />
-          <div class="title-section">
-            <h1 class="title">Und*ck</h1>
-            <p class="tagline">Search with bangs!</p>
+        <header class="search-header">
+          <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+              <polyline points="10 17 15 12 10 7"></polyline>
+              <line x1="15" y1="12" x2="3" y2="12"></line>
+            </svg>
           </div>
-        </div>
+          <h1 class="title">Unduck</h1>
+          <p class="tagline">Search with bangs</p>
+        </header>
         <div class="search-box-container">
-          <div class="input-group search-input-group">
-            <span class="input-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-            <input id="main-search" type="text" placeholder="Search the web (try !g for Google, !yt for YouTube, etc.)" class="search-input with-icon" autofocus />
+          <div class="search-input-group">
+            <input id="main-search" type="text" placeholder="!g, !yt, !w..." class="search-input" autofocus />
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
           </div>
         </div>
       </div>
       <div class="toast" id="toast" style="display:none"></div>
       <footer class="footer">
-        <span>Made by <a href="https://github.com/t3dotgg/unduck" target="_blank">t3dotgg</a> and modified by <a href="https://github.com/thomasnowproductions/unduck" target="_blank">ThomasNow Productions</a></span>
+        <span>Made by <a href="https://github.com/t3dotgg/unduck" target="_blank">t3dotgg</a> / <a href="https://github.com/thomasnowproductions/unduck" target="_blank">ThomasNow</a></span>
       </footer>
     </div>
   `;
@@ -48,10 +60,9 @@ function renderMainPage() {
   });
 
   settingsLink.addEventListener("click", () => {
-    renderSettingsPage();
+    showSettingsModal();
   });
 
-  // Search suggestions functionality
   let suggestionsContainer: HTMLDivElement | null = null;
   let selectedSuggestionIndex = -1;
 
@@ -60,47 +71,6 @@ function renderMainPage() {
 
     suggestionsContainer = document.createElement("div");
     suggestionsContainer.className = "search-suggestions";
-    suggestionsContainer.style.cssText = `
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: #fff;
-      border: 2px solid #e0e0e0;
-      border-top: none;
-      border-radius: 0 0 16px 16px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-      max-height: 300px;
-      overflow-y: auto;
-      z-index: 1000;
-      display: none;
-    `;
-
-    // Add dark mode styles
-    const darkModeStyles = document.createElement("style");
-    darkModeStyles.textContent = `
-      @media (prefers-color-scheme: dark) {
-        .search-suggestions {
-          background: #232323 !important;
-          border-color: #2d2d2d !important;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.3) !important;
-        }
-        .search-suggestion {
-          color: #fff !important;
-        }
-        .search-suggestion:hover,
-        .search-suggestion.selected {
-          background: #2d2d2d !important;
-        }
-        .search-suggestion-trigger {
-          color: #cccccc !important;
-        }
-        .search-suggestion-name {
-          color: #b0b0b0 !important;
-        }
-      }
-    `;
-    document.head.appendChild(darkModeStyles);
 
     return suggestionsContainer;
   }
@@ -117,20 +87,12 @@ function renderMainPage() {
     suggestions.slice(0, 6).forEach((bang, index) => {
       const suggestion = document.createElement("div");
       suggestion.className = "search-suggestion";
-      (suggestion as HTMLElement).style.cssText = `
-        padding: 12px 20px;
-        cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
-        transition: background-color 0.2s;
-      `;
 
       suggestion.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span class="search-suggestion-trigger" style="font-family: monospace; font-weight: 600; color: #888888; min-width: 40px;">!${bang.t}</span>
-          <div style="flex: 1;">
-            <div class="search-suggestion-name" style="font-size: 14px; color: #6b6b6b; font-weight: 500;">${bang.s}</div>
-            ${bang.d ? `<div style="font-size: 12px; color: #888888; margin-top: 2px;">${bang.d}</div>` : ''}
-          </div>
+        <span class="search-suggestion-trigger">!${bang.t}</span>
+        <div>
+          <div class="search-suggestion-name">${bang.s}</div>
+          ${bang.d ? `<div class="search-suggestion-desc">${bang.d}</div>` : ''}
         </div>
       `;
 
@@ -165,10 +127,8 @@ function renderMainPage() {
     suggestions.forEach((suggestion, index) => {
       if (index === selectedSuggestionIndex) {
         suggestion.classList.add("selected");
-        (suggestion as HTMLElement).style.backgroundColor = "#f8f8f8";
       } else {
         suggestion.classList.remove("selected");
-        (suggestion as HTMLElement).style.backgroundColor = "transparent";
       }
     });
   }
@@ -185,7 +145,6 @@ function renderMainPage() {
     searchInput.value = query;
     searchInput.focus();
     hideSuggestions();
-    // Trigger search after a brief delay to allow the input to update
     setTimeout(() => {
       const event = new KeyboardEvent("keypress", { key: "Enter" });
       searchInput.dispatchEvent(event);
@@ -197,14 +156,10 @@ function renderMainPage() {
 
     const normalizedSearch = searchTerm.toLowerCase();
 
-    // If search starts with "!", search in bang triggers
     if (normalizedSearch.startsWith("!")) {
       const bangTrigger = normalizedSearch.slice(1);
 
-      // Find exact match first
       const exactMatch = bangs.filter(b => b.t.toLowerCase() === bangTrigger);
-
-      // Then find partial matches, excluding the exact match
       const partialMatches = bangs.filter(b =>
         b.t.toLowerCase().includes(bangTrigger) &&
         b.t.toLowerCase() !== bangTrigger
@@ -213,9 +168,7 @@ function renderMainPage() {
       return [...exactMatch, ...partialMatches];
     }
 
-    // If search doesn't start with "!", show popular bangs or bangs matching the search term
     if (normalizedSearch.length >= 2) {
-      // Find matches in bang triggers and names
       const triggerMatches = bangs.filter(b =>
         b.t.toLowerCase().includes(normalizedSearch)
       );
@@ -242,14 +195,11 @@ function renderMainPage() {
     }
   }
 
-  // Add input event listener for real-time suggestions
   searchInput.addEventListener("input", handleSearchInput);
 
-  // Add keyboard navigation
   searchInput.addEventListener("keydown", (e) => {
     if (!suggestionsContainer || suggestionsContainer.style.display === "none") {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        // Show suggestions if they're hidden and we have input
         const suggestions = getSuggestions(searchInput.value);
         if (suggestions.length > 0) {
           showSuggestions(suggestions);
@@ -289,7 +239,6 @@ function renderMainPage() {
     }
   });
 
-  // Hide suggestions when clicking outside
   document.addEventListener("click", (e) => {
     if (suggestionsContainer &&
         !suggestionsContainer.contains(e.target as Node) &&
@@ -298,7 +247,6 @@ function renderMainPage() {
     }
   });
 
-  // Position suggestions container relative to search input
   function positionSuggestionsContainer() {
     if (!suggestionsContainer) return;
 
@@ -309,73 +257,55 @@ function renderMainPage() {
     }
   }
 
-  // Position the suggestions container after DOM is ready
   setTimeout(positionSuggestionsContainer, 0);
 }
 
-function renderSettingsPage() {
+function showSettingsModal() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
 
-  // Use all bangs, sorted alphabetically by their display name
-
-  app.innerHTML = `
-    <div class="settings-bg">
-      <div class="settings-container">
-        <header class="settings-header">
-          <button id="back-to-search" class="back-button">← Back to Search</button>
-          <div class="settings-title">
-            <img src="/search.svg" alt="Unduck logo" class="settings-logo" />
-            <div>
-              <h1 class="settings-title-text">Settings</h1>
-              <p class="settings-subtitle">Configure your search preferences</p>
-            </div>
+  const overlay = document.createElement("div");
+  overlay.className = "settings-modal-overlay";
+  overlay.innerHTML = `
+    <div class="settings-modal">
+      <div class="settings-modal-header">
+        <h2 class="settings-modal-title">Settings</h2>
+        <button class="settings-modal-close" id="close-settings">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="settings-modal-content">
+        <div class="settings-modal-section">
+          <label class="settings-modal-label">Default Bang</label>
+          <input type="text" id="default-bang-input" class="settings-modal-input" placeholder="g, yt, w..." value="" />
+          <small class="settings-modal-help">Bang shortcut without the ! symbol</small>
+        </div>
+        <div class="settings-modal-section">
+          <label class="settings-modal-label">Search URL</label>
+          <div class="settings-modal-url-row">
+            <input type="text" class="settings-modal-url-input" id="output-url" value="https://unduck-me.vercel.app/?q=%s" readonly />
+            <button class="settings-modal-copy" id="copy-url">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy
+            </button>
           </div>
-        </header>
-        <div class="settings-content">
-          <section class="settings-section">
-            <h2 class="settings-section-title">Search Engine Setup</h2>
-            <p class="settings-description">Add this URL as a custom search engine in your browser to enable fast bang searches.</p>
-
-            <div class="form-group">
-              <label class="form-label">Default Bang</label>
-              <input
-                type="text"
-                id="default-bang-input"
-                class="bang-input"
-                placeholder="e.g., g for Google, yt for YouTube, w for Wikipedia"
-                value=""
-              />
-              <small class="input-help">Enter the bang shortcut (without the ! symbol)</small>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Browser Search URL</label>
-              <div class="url-display-container">
-                <input
-                  type="text"
-                  class="url-display-input"
-                  id="output-url"
-                  value="https://unduck-me.vercel.app/?q=%s"
-                  readonly
-                />
-                <button class="copy-button" title="Copy URL">
-                  <img src="/clipboard.svg" alt="Copy" />
-                </button>
-              </div>
-            </div>
-          </section>
-
         </div>
       </div>
-      <div class="toast" id="toast" style="display:none"></div>
     </div>
   `;
 
-  const backButton = app.querySelector<HTMLButtonElement>("#back-to-search")!;
-  const copyButton = app.querySelector<HTMLButtonElement>(".copy-button")!;
-  const copyIcon = copyButton.querySelector("img")!;
-  const urlInput = app.querySelector<HTMLInputElement>("#output-url")!;
-  const defaultBangInput = app.querySelector<HTMLInputElement>("#default-bang-input")!;
+  app.appendChild(overlay);
+
+  const closeButton = overlay.querySelector<HTMLButtonElement>("#close-settings")!;
+  const copyButton = overlay.querySelector<HTMLButtonElement>("#copy-url")!;
+  const urlInput = overlay.querySelector<HTMLInputElement>("#output-url")!;
+  const defaultBangInput = overlay.querySelector<HTMLInputElement>("#default-bang-input")!;
+  const toast = app.querySelector<HTMLDivElement>("#toast")!;
 
   function updateUrlInput() {
     const bangValue = defaultBangInput.value.trim().toLowerCase();
@@ -390,20 +320,42 @@ function renderSettingsPage() {
 
   copyButton.addEventListener("click", async () => {
     await navigator.clipboard.writeText(urlInput.value);
-    copyIcon.src = "/clipboard-check.svg";
-    const toast = app.querySelector<HTMLDivElement>("#toast")!;
+    copyButton.classList.add("copied");
+    copyButton.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      Copied
+    `;
     toast.textContent = "Copied!";
     toast.style.display = "block";
     toast.classList.add("show");
     setTimeout(() => {
-      copyIcon.src = "/clipboard.svg";
+      copyButton.classList.remove("copied");
+      copyButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        Copy
+      `;
       toast.classList.remove("show");
       toast.style.display = "none";
     }, 2000);
   });
 
-  backButton.addEventListener("click", () => {
-    renderMainPage();
+  function closeModal() {
+    overlay.style.opacity = "0";
+    overlay.style.pointerEvents = "none";
+    setTimeout(() => overlay.remove(), 200);
+  }
+
+  closeButton.addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && app.contains(overlay)) closeModal();
   });
 }
 
@@ -411,7 +363,6 @@ function noSearchDefaultPageRender() {
   const app = document.querySelector<HTMLDivElement>("#app")!;
 
   const copyButton = app.querySelector<HTMLButtonElement>(".copy-button")!;
-  const copyIcon = copyButton.querySelector("img")!;
   const urlInput = app.querySelector<HTMLInputElement>("#output-url")!;
   const bangPicker = app.querySelector<HTMLSelectElement>("#bang-picker")!;
   const bangSearch = app.querySelector<HTMLInputElement>("#bang-search")!;
@@ -429,12 +380,9 @@ function noSearchDefaultPageRender() {
 
   bangSearch.addEventListener("input", () => {
     const search = bangSearch.value.trim().toLowerCase();
-    // Allow searching by bang with or without '!'
     const normalizedSearch = search.startsWith("!") ? search.slice(1) : search;
 
-    // Find exact match first
     const exactMatch = bangs.filter(b => b.t.toLowerCase() === normalizedSearch);
-    // Then find partial matches, excluding the exact match
     const partialMatches = bangs.filter(b =>
       (search === "" ||
         b.s.toLowerCase().includes(search) ||
@@ -449,8 +397,7 @@ function noSearchDefaultPageRender() {
         .map(b => `<option value="${b.t}">${b.s} (!${b.t})</option>`)
         .join("");
     } else {
-      // Styled 'No bangs found' option
-      optionsHtml += `<option value="" disabled style="color: #888; font-style: italic; background: #f8d7da; color: #721c24;">No bangs found</option>`;
+      optionsHtml += `<option value="" disabled style="color: #888; font-style: italic;">No bangs found</option>`;
     }
     bangPicker.innerHTML = optionsHtml;
     bangPicker.selectedIndex = 0;
@@ -459,13 +406,13 @@ function noSearchDefaultPageRender() {
 
   copyButton.addEventListener("click", async () => {
     await navigator.clipboard.writeText(urlInput.value);
-    copyIcon.src = "/clipboard-check.svg";
+    copyButton.classList.add("copied");
     const toast = app.querySelector<HTMLDivElement>("#toast")!;
     toast.textContent = "Copied!";
     toast.style.display = "block";
     toast.classList.add("show");
     setTimeout(() => {
-      copyIcon.src = "/clipboard.svg";
+      copyButton.classList.remove("copied");
       toast.classList.remove("show");
       toast.style.display = "none";
     }, 2000);
@@ -480,7 +427,6 @@ function getMultipleBangUrls() {
     return null;
   }
 
-  // Extract all bangs from the query using regex
   const bangMatches = query.match(/!(\S+)/gi);
   if (!bangMatches || bangMatches.length === 0) {
     return null;
@@ -488,23 +434,18 @@ function getMultipleBangUrls() {
 
   const bangCandidates = bangMatches.map(match => match.slice(1).toLowerCase());
 
-  // Get defaultBang from URL param if present
   const urlDefaultBang = url.searchParams.get("defaultBang")?.toLowerCase();
   const urlDefaultBangObj = urlDefaultBang ? bangs.find((b) => b.t === urlDefaultBang) : undefined;
 
-  // Get defaultBang from localStorage or fallback to 'g'
   const LS_DEFAULT_BANG = localStorage.getItem("default-bang") ?? "g";
   const localStorageDefaultBangObj = bangs.find((b) => b.t === LS_DEFAULT_BANG);
 
-  // Remove all bangs from the query to get the search term
   const cleanQuery = query.replace(/!\S+/gi, "").trim();
 
-  // If no search term provided, use domain URLs
   if (cleanQuery === "") {
     const urls: string[] = [];
 
     bangCandidates.forEach(bangCandidate => {
-      // Precedence: explicit bang > url param > localStorage > 'g'
       const selectedBang =
         bangs.find((b) => b.t === bangCandidate) ||
         urlDefaultBangObj ||
@@ -518,22 +459,17 @@ function getMultipleBangUrls() {
     return urls.length > 0 ? urls : null;
   }
 
-  // Generate search URLs for each bang
   const urls: string[] = [];
 
   bangCandidates.forEach(bangCandidate => {
-    // Precedence: explicit bang > url param > localStorage > 'g'
     const selectedBang =
       bangs.find((b) => b.t === bangCandidate) ||
       urlDefaultBangObj ||
       localStorageDefaultBangObj;
 
     if (selectedBang) {
-      // Format of the url is:
-      // https://www.google.com/search?q={{{s}}}
       const searchUrl = selectedBang.u.replace(
         "{{{s}}}",
-        // Replace %2F with / to fix formats like "!ghr+t3dotgg/unduck"
         encodeURIComponent(cleanQuery).replace(/%2F/g, "/"),
       );
       urls.push(searchUrl);
@@ -544,16 +480,14 @@ function getMultipleBangUrls() {
 }
 
 function openMultipleTabs(urls: string[]) {
-  // Open the first URL in the current tab
   if (urls.length > 0) {
     window.location.href = urls[0];
   }
 
-  // Open the remaining URLs in new tabs with a small delay to ensure they open properly
   for (let i = 1; i < urls.length; i++) {
     setTimeout(() => {
       window.open(urls[i], '_blank');
-    }, i * 100); // Stagger opening by 100ms each
+    }, i * 100);
   }
 }
 
@@ -568,32 +502,24 @@ function getBangredirectUrl() {
   const match = query.match(/!(\S+)/i);
   const bangCandidate = match?.[1]?.toLowerCase();
 
-  // Get defaultBang from URL param if present
   const urlDefaultBang = url.searchParams.get("defaultBang")?.toLowerCase();
   const urlDefaultBangObj = urlDefaultBang ? bangs.find((b) => b.t === urlDefaultBang) : undefined;
 
-  // Get defaultBang from localStorage or fallback to 'g'
   const LS_DEFAULT_BANG = localStorage.getItem("default-bang") ?? "g";
   const localStorageDefaultBangObj = bangs.find((b) => b.t === LS_DEFAULT_BANG);
 
-  // Precedence: explicit bang > url param > localStorage > 'g'
   const selectedBang =
     bangs.find((b) => b.t === bangCandidate) ||
     urlDefaultBangObj ||
     localStorageDefaultBangObj;
 
-  // Remove the first bang from the query
   const cleanQuery = query.replace(/!\S+\s*/i, "").trim();
 
-  // If the query is just a bang, use the domain
   if (cleanQuery === "")
     return selectedBang ? `https://${selectedBang.d}` : null;
 
-  // Format of the url is:
-  // https://www.google.com/search?q={{{s}}}
   const searchUrl = selectedBang?.u.replace(
     "{{{s}}}",
-    // Replace %2F with / to fix formats like "!ghr+t3dotgg/unduck"
     encodeURIComponent(cleanQuery).replace(/%2F/g, "/"),
   );
   if (!searchUrl) return null;
@@ -602,36 +528,29 @@ function getBangredirectUrl() {
 }
 
 function doRedirect() {
-  // First check if there are multiple bangs in the query
   const multipleUrls = getMultipleBangUrls();
   if (multipleUrls && multipleUrls.length > 1) {
-    // If multiple bangs found, open them in separate tabs
     openMultipleTabs(multipleUrls);
     return;
   }
 
-  // Otherwise, use the original single bang logic
   const searchUrl = getBangredirectUrl();
   if (!searchUrl) return;
   window.location.replace(searchUrl);
 }
 
-// Main routing logic
 function init() {
-  // Check if we're on the settings page (using hash routing)
   if (window.location.hash === "#settings") {
-    renderSettingsPage();
+    showSettingsModal();
     return;
   }
 
-  // Check if we have a search query to redirect
   const url = new URL(window.location.href);
   const query = url.searchParams.get("q")?.trim();
 
   if (query) {
     doRedirect();
   } else {
-    // No query, show the main search page
     renderMainPage();
   }
 }
