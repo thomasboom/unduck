@@ -267,8 +267,8 @@ function showSettingsModal() {
   overlay.innerHTML = `
     <div class="settings-modal">
       <div class="settings-modal-header">
-        <h2 class="settings-modal-title">Settings</h2>
-        <button class="settings-modal-close" id="close-settings">
+          <div class="settings-modal-title">Settings</div>
+          <button class="settings-modal-close" id="close-settings">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
