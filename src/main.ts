@@ -33,6 +33,7 @@ function renderMainPage() {
               </svg>
             </span>
           </div>
+          <div id="search-preview" class="search-preview"></div>
         </div>
       </div>
       <div class="toast" id="toast" style="display:none"></div>
@@ -192,6 +193,47 @@ function renderMainPage() {
     } else {
       hideSuggestions();
     }
+
+    updateSearchPreview();
+  }
+
+  function updateSearchPreview() {
+    const previewEl = app.querySelector<HTMLDivElement>("#search-preview");
+    if (!previewEl) return;
+
+    const query = searchInput.value.trim();
+    if (!query) {
+      previewEl.classList.remove("visible");
+      return;
+    }
+
+    const bangMatch = query.match(/!(\S+)/i);
+    const bangCandidate = bangMatch?.[1]?.toLowerCase();
+
+    if (bangCandidate) {
+      const bang = bangs.find((b) => b.t.toLowerCase() === bangCandidate);
+      const searchTerm = query.replace(/!\S+\s*/i, "").trim();
+
+      if (bang) {
+        if (searchTerm) {
+          previewEl.innerHTML = `Search <span class="search-preview-query">${escapeHtml(searchTerm)}</span> on <span class="search-preview-bang">${escapeHtml(bang.s)}</span>`;
+          previewEl.classList.add("visible");
+        } else {
+          previewEl.innerHTML = `Search <span class="search-preview-query">...</span> on <span class="search-preview-bang">${escapeHtml(bang.s)}</span>`;
+          previewEl.classList.add("visible");
+        }
+      } else {
+        previewEl.classList.remove("visible");
+      }
+    } else {
+      previewEl.classList.remove("visible");
+    }
+  }
+
+  function escapeHtml(text: string): string {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   searchInput.addEventListener("input", handleSearchInput);

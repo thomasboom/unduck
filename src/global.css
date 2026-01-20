@@ -144,6 +144,30 @@ textarea {
   align-items: center;
 }
 
+.search-preview {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+  text-align: center;
+  min-height: 1.25rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.search-preview.visible {
+  opacity: 1;
+}
+
+.search-preview-query {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.search-preview-bang {
+  color: var(--focus);
+  font-weight: 600;
+}
+
 .input-icon {
   position: absolute;
   left: 16px;
