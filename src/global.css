@@ -163,6 +163,11 @@ textarea {
   font-weight: 500;
 }
 
+.search-preview-query.placeholder {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
 .search-preview-bang {
   color: var(--focus);
   font-weight: 600;

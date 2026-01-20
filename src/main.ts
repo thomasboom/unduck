@@ -219,7 +219,7 @@ function renderMainPage() {
           previewEl.innerHTML = `Search <span class="search-preview-query">${escapeHtml(searchTerm)}</span> on <span class="search-preview-bang">${escapeHtml(bang.s)}</span>`;
           previewEl.classList.add("visible");
         } else {
-          previewEl.innerHTML = `Search <span class="search-preview-query">...</span> on <span class="search-preview-bang">${escapeHtml(bang.s)}</span>`;
+          previewEl.innerHTML = `Search <span class="search-preview-query placeholder">something</span> on <span class="search-preview-bang">${escapeHtml(bang.s)}</span>`;
           previewEl.classList.add("visible");
         }
       } else {
