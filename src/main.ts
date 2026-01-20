@@ -38,7 +38,7 @@ function renderMainPage() {
       </div>
       <div class="toast" id="toast" style="display:none"></div>
       <footer class="footer">
-        <span>Made by <a href="https://github.com/t3dotgg/unduck" target="_blank">t3dotgg</a> / <a href="https://github.com/thomasnowproductions/unduck" target="_blank">ThomasNow</a></span>
+        <span>Made by <a href="https://github.com/t3dotgg/unduck" target="_blank">t3dotgg</a> / <a href="https://github.com/thomasboom/unduck" target="_blank">thomasboom</a></span>
       </footer>
     </div>
   `;
