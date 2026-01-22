@@ -12,6 +12,14 @@ function renderMainPage() {
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
       </button>
+      <button id="browse-bangs-link" class="browse-bangs-button-top" title="Browse all bangs">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+      </button>
       <div class="search-container">
         <header class="search-header">
           <div class="logo">
@@ -45,6 +53,7 @@ function renderMainPage() {
 
   const searchInput = app.querySelector<HTMLInputElement>("#main-search")!;
   const settingsLink = app.querySelector<HTMLButtonElement>("#settings-link")!;
+  const browseBangsLink = app.querySelector<HTMLButtonElement>("#browse-bangs-link")!;
 
   function performSearch() {
     const query = searchInput.value.trim();
@@ -61,6 +70,10 @@ function renderMainPage() {
 
   settingsLink.addEventListener("click", () => {
     showSettingsModal();
+  });
+
+  browseBangsLink.addEventListener("click", () => {
+    renderBangsOverview();
   });
 
   let suggestionsContainer: HTMLDivElement | null = null;
@@ -299,6 +312,97 @@ function renderMainPage() {
   }
 
   setTimeout(positionSuggestionsContainer, 0);
+}
+
+function renderBangsOverview() {
+  const app = document.querySelector<HTMLDivElement>("#app")!;
+
+  app.innerHTML = `
+    <div class="bangs-overview-bg">
+      <button id="back-link" class="back-button" title="Back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </button>
+      <div class="bangs-overview-container">
+        <header class="bangs-overview-header">
+          <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <h1 class="title">All Bangs</h1>
+          <p class="tagline">${bangs.length} bangs available</p>
+        </header>
+        <div class="bangs-overview-content">
+          <div class="bangs-search-container">
+            <input id="bangs-search" type="text" placeholder="Search bangs..." class="bangs-search-input" />
+          </div>
+          <div class="bangs-count" id="bangs-count">Showing all ${bangs.length} bangs</div>
+          <div id="bangs-grid" class="bangs-grid"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const backLink = app.querySelector<HTMLButtonElement>("#back-link")!;
+  const bangsSearch = app.querySelector<HTMLInputElement>("#bangs-search")!;
+  const bangsGrid = app.querySelector<HTMLDivElement>("#bangs-grid")!;
+  const bangsCount = app.querySelector<HTMLDivElement>("#bangs-count")!;
+
+  backLink.addEventListener("click", () => {
+    renderMainPage();
+  });
+
+  function renderBangs(bangsToRender: typeof bangs) {
+    bangsGrid.innerHTML = bangsToRender.map(bang => {
+      const category = (bang.sc ?? bang.c) ?? "";
+      return `
+      <div class="bang-card">
+        <div class="bang-card-header">
+          <span class="bang-trigger">!${bang.t}</span>
+          <span class="bang-category">${category}</span>
+        </div>
+        <div class="bang-name">${bang.s}</div>
+        <div class="bang-domain">${bang.d}</div>
+      </div>
+    `}).join("");
+  }
+
+  function filterBangs(searchTerm: string): typeof bangs {
+    const normalizedSearch = searchTerm.toLowerCase().trim();
+    
+    if (!normalizedSearch) return bangs;
+
+    return bangs.filter(bang => {
+      const category = (bang.sc ?? bang.c) ?? "";
+      return bang.t.toLowerCase().includes(normalizedSearch) ||
+        bang.s.toLowerCase().includes(normalizedSearch) ||
+        category.toLowerCase().includes(normalizedSearch);
+    });
+  }
+
+  function updateBangsDisplay() {
+    const searchTerm = bangsSearch.value;
+    const filteredBangs = filterBangs(searchTerm);
+    
+    if (filteredBangs.length === 0) {
+      bangsCount.textContent = `No bangs found for "${searchTerm}"`;
+    } else if (searchTerm.trim()) {
+      bangsCount.textContent = `Found ${filteredBangs.length} bang${filteredBangs.length === 1 ? '' : 's'} for "${searchTerm}"`;
+    } else {
+      bangsCount.textContent = `Showing all ${filteredBangs.length} bangs`;
+    }
+
+    renderBangs(filteredBangs.slice(0, 500));
+  }
+
+  bangsSearch.addEventListener("input", updateBangsDisplay);
+
+  bangsSearch.focus();
+  updateBangsDisplay();
 }
 
 function showSettingsModal() {
