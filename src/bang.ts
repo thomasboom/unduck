@@ -54469,6 +54469,15 @@ export const bangs = [
     sc: "Companies",
     t: "iot",
     u: "https://www.roomalert.ro/search?q={{{s}}}",
+   },
+  {
+    c: "Online Services",
+    d: "localhost:5173",
+    r: 0,
+    s: "IP-Car",
+    sc: "Accessibility",
+    t: "ip-car",
+    u: "http://localhost:5173/driver?id={{{s}}}",
   },
   {
     c: "Online Services",
