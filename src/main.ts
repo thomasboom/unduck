@@ -673,6 +673,27 @@ function getBangredirectUrl() {
 }
 
 function doRedirect() {
+  const url = new URL(window.location.href);
+  const query = url.searchParams.get("q")?.trim() ?? "";
+
+  // Special case: if query starts with "!bang" or "!bangs", show bangs overview
+  const bangMatch = query.match(/^!(bang|bangs)(?:\s+(.+))?$/i);
+  if (bangMatch) {
+    renderBangsOverview();
+    // If there's a search term, pre-fill the search input
+    const searchTerm = bangMatch[2];
+    if (searchTerm) {
+      setTimeout(() => {
+        const bangsSearch = document.querySelector<HTMLInputElement>("#bangs-search");
+        if (bangsSearch) {
+          bangsSearch.value = searchTerm;
+          bangsSearch.dispatchEvent(new Event('input'));
+        }
+      }, 100);
+    }
+    return;
+  }
+
   const multipleUrls = getMultipleBangUrls();
   if (multipleUrls && multipleUrls.length > 1) {
     openMultipleTabs(multipleUrls);
