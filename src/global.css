@@ -557,7 +557,7 @@ textarea {
 .browse-bangs-button-top {
   position: fixed;
   top: 1.5rem;
-  right: 4rem;
+  right: 4.5rem;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -764,7 +764,7 @@ textarea {
 
   .browse-bangs-button-top {
     top: 1rem;
-    right: 3.5rem;
+    right: 4rem;
     width: 36px;
     height: 36px;
   }
