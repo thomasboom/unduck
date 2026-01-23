@@ -281,6 +281,8 @@ textarea {
   justify-content: center;
   color: var(--text-muted);
   transition: all 0.2s;
+  background: var(--card);
+  border: 2px solid var(--border);
   animation: fadeIn 0.6s ease-out 0.3s both;
 }
 
@@ -564,6 +566,8 @@ textarea {
   justify-content: center;
   color: var(--text-muted);
   transition: all 0.2s;
+  background: var(--card);
+  border: 2px solid var(--border);
   animation: fadeIn 0.6s ease-out 0.3s both;
 }
 
