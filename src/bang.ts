@@ -54508,12 +54508,12 @@ export const bangs = [
   },
   {
     "c": "Online Services",
-    "d": "localhost:5173",
+    "d": "ipcar.dev",
     "r": 0,
     "s": "IP-Car",
     "sc": "Accessibility",
     "t": "ip-car",
-    "u": "http://localhost:5173/driver?id={{{s}}}"
+    "u": "http://ipcar.dev/driver?id={{{s}}}"
   },
   {
     "c": "Research",
