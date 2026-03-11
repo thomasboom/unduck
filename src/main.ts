@@ -41,7 +41,6 @@ function renderMainPage() {
               </svg>
             </span>
           </div>
-          <div id="search-preview" class="search-preview"></div>
         </div>
       </div>
       <div class="toast" id="toast" style="display:none"></div>
@@ -53,7 +52,8 @@ function renderMainPage() {
 
   const searchInput = app.querySelector<HTMLInputElement>("#main-search")!;
   const settingsLink = app.querySelector<HTMLButtonElement>("#settings-link")!;
-  const browseBangsLink = app.querySelector<HTMLButtonElement>("#browse-bangs-link")!;
+  const browseBangsLink =
+    app.querySelector<HTMLButtonElement>("#browse-bangs-link")!;
 
   function performSearch() {
     const query = searchInput.value.trim();
@@ -76,53 +76,68 @@ function renderMainPage() {
     renderBangsOverview();
   });
 
+  type SuggestionItem = { type: "prediction"; text: string };
+
   let suggestionsContainer: HTMLDivElement | null = null;
   let selectedSuggestionIndex = -1;
+  let currentSuggestionItems: SuggestionItem[] = [];
+  const predictionCache = new Map<string, string[]>();
+  let predictionAbortController: AbortController | null = null;
+  let predictionRequestId = 0;
+  let lastPredictionTerm = "";
+  let lastPredictionResults: string[] = [];
+  let predictionDebounceId: number | null = null;
 
   function createSuggestionsContainer() {
     if (suggestionsContainer) return suggestionsContainer;
 
     suggestionsContainer = document.createElement("div");
     suggestionsContainer.className = "search-suggestions";
+    const searchBoxContainer = searchInput.closest(
+      ".search-box-container",
+    ) as HTMLElement | null;
+    if (searchBoxContainer) {
+      searchBoxContainer.style.position = "relative";
+      searchBoxContainer.appendChild(suggestionsContainer);
+    }
 
     return suggestionsContainer;
   }
 
-  function showSuggestions(suggestions: typeof bangs) {
-    if (suggestions.length === 0) {
+  function showSuggestions(predictionSuggestions: string[]) {
+    if (predictionSuggestions.length === 0) {
       hideSuggestions();
       return;
     }
 
     const container = createSuggestionsContainer();
     container.innerHTML = "";
+    currentSuggestionItems = [];
 
-    suggestions.slice(0, 6).forEach((bang, index) => {
+    predictionSuggestions.slice(0, 6).forEach((text) => {
       const suggestion = document.createElement("div");
-      suggestion.className = "search-suggestion";
+      suggestion.className = "search-suggestion prediction";
+      const itemIndex = currentSuggestionItems.length;
+      currentSuggestionItems.push({ type: "prediction", text });
 
       suggestion.innerHTML = `
-        <span class="search-suggestion-trigger">!${bang.t}</span>
-        <div>
-          <div class="search-suggestion-name">${bang.s}</div>
-          ${bang.d ? `<div class="search-suggestion-desc">${bang.d}</div>` : ''}
-        </div>
+        <div class="search-suggestion-name">${escapeHtml(text)}</div>
       `;
 
       suggestion.addEventListener("mouseenter", () => {
-        selectedSuggestionIndex = index;
+        selectedSuggestionIndex = itemIndex;
         updateSuggestionSelection();
       });
 
       suggestion.addEventListener("mouseleave", () => {
-        if (selectedSuggestionIndex === index) {
+        if (selectedSuggestionIndex === itemIndex) {
           selectedSuggestionIndex = -1;
           updateSuggestionSelection();
         }
       });
 
       suggestion.addEventListener("click", () => {
-        selectSuggestion(bang);
+        selectSuggestion({ type: "prediction", text });
       });
 
       container.appendChild(suggestion);
@@ -136,7 +151,8 @@ function renderMainPage() {
   function updateSuggestionSelection() {
     if (!suggestionsContainer) return;
 
-    const suggestions = suggestionsContainer.querySelectorAll(".search-suggestion");
+    const suggestions =
+      suggestionsContainer.querySelectorAll(".search-suggestion");
     suggestions.forEach((suggestion, index) => {
       if (index === selectedSuggestionIndex) {
         suggestion.classList.add("selected");
@@ -150,98 +166,109 @@ function renderMainPage() {
     if (suggestionsContainer) {
       suggestionsContainer.style.display = "none";
     }
+    currentSuggestionItems = [];
     selectedSuggestionIndex = -1;
   }
 
-  function selectSuggestion(bang: typeof bangs[0]) {
-    const query = `!${bang.t} `;
-    searchInput.value = query;
+  function selectSuggestion(item: SuggestionItem) {
+    const { prefix } = getPredictionContext(searchInput.value);
+    const nextValue = prefix ? `${prefix}${item.text}` : item.text;
+    searchInput.value = nextValue;
     searchInput.focus();
+    searchInput.setSelectionRange(nextValue.length, nextValue.length);
     hideSuggestions();
-    setTimeout(() => {
-      const event = new KeyboardEvent("keypress", { key: "Enter" });
-      searchInput.dispatchEvent(event);
-    }, 10);
+    handleSearchInput();
   }
 
-  function getSuggestions(searchTerm: string): typeof bangs {
-    if (!searchTerm.trim()) return [];
-
-    const normalizedSearch = searchTerm.toLowerCase();
-
-    if (normalizedSearch.startsWith("!")) {
-      const bangTrigger = normalizedSearch.slice(1);
-
-      const exactMatch = bangs.filter(b => b.t.toLowerCase() === bangTrigger);
-      const partialMatches = bangs.filter(b =>
-        b.t.toLowerCase().includes(bangTrigger) &&
-        b.t.toLowerCase() !== bangTrigger
-      );
-
-      return [...exactMatch, ...partialMatches];
+  function getPredictionContext(rawValue: string) {
+    const trimmed = rawValue.trimStart();
+    const match = trimmed.match(/^!(\S+)\s*(.*)$/);
+    if (!match) {
+      return { prefix: "", term: trimmed.trim() };
     }
 
-    if (normalizedSearch.length >= 2) {
-      const triggerMatches = bangs.filter(b =>
-        b.t.toLowerCase().includes(normalizedSearch)
-      );
+    const bangTrigger = match[1];
+    const term = match[2]?.trim() ?? "";
+    return { prefix: `!${bangTrigger} `, term };
+  }
 
-      const nameMatches = bangs.filter(b =>
-        b.s.toLowerCase().includes(normalizedSearch) &&
-        !triggerMatches.includes(b)
-      );
+  function getPredictionSuggestions(rawValue: string) {
+    const { term } = getPredictionContext(rawValue);
+    if (!term || term.length < 2) return [];
+    if (term === lastPredictionTerm) return lastPredictionResults;
+    return predictionCache.get(term) ?? [];
+  }
 
-      return [...triggerMatches, ...nameMatches].slice(0, 6);
+  async function fetchPredictionSuggestions(term: string) {
+    if (predictionCache.has(term)) return predictionCache.get(term)!;
+
+    predictionAbortController?.abort();
+    const controller = new AbortController();
+    predictionAbortController = controller;
+    const requestId = ++predictionRequestId;
+
+    const url = new URL("/api/suggest", window.location.origin);
+    url.searchParams.set("q", term);
+    url.searchParams.set("type", "list");
+
+    const response = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) return [];
+    const data = await response.json();
+    const suggestions = Array.isArray(data?.suggestions)
+      ? data.suggestions.filter((item: unknown) => typeof item === "string")
+      : Array.isArray(data) &&
+          typeof data[0] === "string" &&
+          Array.isArray(data[1])
+        ? data[1].filter((item: unknown) => typeof item === "string")
+        : Array.isArray(data)
+          ? data
+              .map((item: { phrase?: string }) => item?.phrase)
+              .filter((item: unknown) => typeof item === "string")
+          : [];
+
+    if (requestId !== predictionRequestId) return [];
+
+    predictionCache.set(term, suggestions);
+    lastPredictionTerm = term;
+    lastPredictionResults = suggestions;
+
+    return suggestions;
+  }
+
+  function schedulePredictionFetch(rawValue: string) {
+    const { term } = getPredictionContext(rawValue);
+    if (!term || term.length < 2) return;
+
+    if (predictionDebounceId) {
+      window.clearTimeout(predictionDebounceId);
     }
 
-    return [];
+    predictionDebounceId = window.setTimeout(async () => {
+      await fetchPredictionSuggestions(term);
+      if (getPredictionContext(searchInput.value).term === term) {
+        renderSuggestionsForCurrentInput();
+      }
+    }, 160);
+  }
+
+  function renderSuggestionsForCurrentInput() {
+    const query = searchInput.value;
+    const predictionSuggestions = getPredictionSuggestions(query);
+    showSuggestions(predictionSuggestions);
   }
 
   function handleSearchInput() {
-    const query = searchInput.value;
-    const suggestions = getSuggestions(query);
-
-    if (suggestions.length > 0) {
-      showSuggestions(suggestions);
-    } else {
-      hideSuggestions();
-    }
+    renderSuggestionsForCurrentInput();
+    schedulePredictionFetch(searchInput.value);
 
     updateSearchPreview();
   }
 
-  function updateSearchPreview() {
-    const previewEl = app.querySelector<HTMLDivElement>("#search-preview");
-    if (!previewEl) return;
-
-    const query = searchInput.value.trim();
-    if (!query) {
-      previewEl.classList.remove("visible");
-      return;
-    }
-
-    const bangMatch = query.match(/!(\S+)/i);
-    const bangCandidate = bangMatch?.[1]?.toLowerCase();
-
-    if (bangCandidate) {
-      const bang = bangs.find((b) => b.t.toLowerCase() === bangCandidate);
-      const searchTerm = query.replace(/!\S+\s*/i, "").trim();
-
-      if (bang) {
-        if (searchTerm) {
-          previewEl.innerHTML = `Search <span class="search-preview-query">${escapeHtml(searchTerm)}</span> on <span class="search-preview-bang">${escapeHtml(bang.s)}</span>`;
-          previewEl.classList.add("visible");
-        } else {
-          previewEl.innerHTML = `Search <span class="search-preview-query placeholder">something</span> on <span class="search-preview-bang">${escapeHtml(bang.s)}</span>`;
-          previewEl.classList.add("visible");
-        }
-      } else {
-        previewEl.classList.remove("visible");
-      }
-    } else {
-      previewEl.classList.remove("visible");
-    }
-  }
+  function updateSearchPreview() {}
 
   function escapeHtml(text: string): string {
     const div = document.createElement("div");
@@ -252,12 +279,15 @@ function renderMainPage() {
   searchInput.addEventListener("input", handleSearchInput);
 
   searchInput.addEventListener("keydown", (e) => {
-    if (!suggestionsContainer || suggestionsContainer.style.display === "none") {
+    if (
+      !suggestionsContainer ||
+      suggestionsContainer.style.display === "none"
+    ) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        const suggestions = getSuggestions(searchInput.value);
-        if (suggestions.length > 0) {
-          showSuggestions(suggestions);
-          selectedSuggestionIndex = e.key === "ArrowDown" ? 0 : suggestions.length - 1;
+        renderSuggestionsForCurrentInput();
+        if (currentSuggestionItems.length > 0) {
+          selectedSuggestionIndex =
+            e.key === "ArrowDown" ? 0 : currentSuggestionItems.length - 1;
           updateSuggestionSelection();
           e.preventDefault();
         }
@@ -265,12 +295,16 @@ function renderMainPage() {
       return;
     }
 
-    const suggestions = suggestionsContainer.querySelectorAll(".search-suggestion");
+    const suggestions =
+      suggestionsContainer.querySelectorAll(".search-suggestion");
 
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
+        selectedSuggestionIndex = Math.min(
+          selectedSuggestionIndex + 1,
+          suggestions.length - 1,
+        );
         updateSuggestionSelection();
         break;
       case "ArrowUp":
@@ -279,11 +313,14 @@ function renderMainPage() {
         updateSuggestionSelection();
         break;
       case "Enter":
-        if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length) {
+        if (
+          selectedSuggestionIndex >= 0 &&
+          selectedSuggestionIndex < suggestions.length
+        ) {
           e.preventDefault();
-          const selectedBang = getSuggestions(searchInput.value)[selectedSuggestionIndex];
-          if (selectedBang) {
-            selectSuggestion(selectedBang);
+          const selectedItem = currentSuggestionItems[selectedSuggestionIndex];
+          if (selectedItem) {
+            selectSuggestion(selectedItem);
           }
         }
         break;
@@ -294,9 +331,11 @@ function renderMainPage() {
   });
 
   document.addEventListener("click", (e) => {
-    if (suggestionsContainer &&
-        !suggestionsContainer.contains(e.target as Node) &&
-        e.target !== searchInput) {
+    if (
+      suggestionsContainer &&
+      !suggestionsContainer.contains(e.target as Node) &&
+      e.target !== searchInput
+    ) {
       hideSuggestions();
     }
   });
@@ -304,8 +343,13 @@ function renderMainPage() {
   function positionSuggestionsContainer() {
     if (!suggestionsContainer) return;
 
-    const searchBoxContainer = searchInput.closest(".search-box-container") as HTMLElement;
-    if (searchBoxContainer) {
+    const searchBoxContainer = searchInput.closest(
+      ".search-box-container",
+    ) as HTMLElement | null;
+    if (
+      searchBoxContainer &&
+      suggestionsContainer.parentElement !== searchBoxContainer
+    ) {
       searchBoxContainer.style.position = "relative";
       searchBoxContainer.appendChild(suggestionsContainer);
     }
@@ -357,9 +401,10 @@ function renderBangsOverview() {
   });
 
   function renderBangs(bangsToRender: typeof bangs) {
-    bangsGrid.innerHTML = bangsToRender.map(bang => {
-      const category = (bang.sc ?? bang.c) ?? "";
-      return `
+    bangsGrid.innerHTML = bangsToRender
+      .map((bang) => {
+        const category = bang.sc ?? bang.c ?? "";
+        return `
       <div class="bang-card">
         <div class="bang-card-header">
           <span class="bang-trigger">!${bang.t}</span>
@@ -368,30 +413,34 @@ function renderBangsOverview() {
         <div class="bang-name">${bang.s}</div>
         <div class="bang-domain">${bang.d}</div>
       </div>
-    `}).join("");
+    `;
+      })
+      .join("");
   }
 
   function filterBangs(searchTerm: string): typeof bangs {
     const normalizedSearch = searchTerm.toLowerCase().trim();
-    
+
     if (!normalizedSearch) return bangs;
 
-    return bangs.filter(bang => {
-      const category = (bang.sc ?? bang.c) ?? "";
-      return bang.t.toLowerCase().includes(normalizedSearch) ||
+    return bangs.filter((bang) => {
+      const category = bang.sc ?? bang.c ?? "";
+      return (
+        bang.t.toLowerCase().includes(normalizedSearch) ||
         bang.s.toLowerCase().includes(normalizedSearch) ||
-        category.toLowerCase().includes(normalizedSearch);
+        category.toLowerCase().includes(normalizedSearch)
+      );
     });
   }
 
   function updateBangsDisplay() {
     const searchTerm = bangsSearch.value;
     const filteredBangs = filterBangs(searchTerm);
-    
+
     if (filteredBangs.length === 0) {
       bangsCount.textContent = `No bangs found for "${searchTerm}"`;
     } else if (searchTerm.trim()) {
-      bangsCount.textContent = `Found ${filteredBangs.length} bang${filteredBangs.length === 1 ? '' : 's'} for "${searchTerm}"`;
+      bangsCount.textContent = `Found ${filteredBangs.length} bang${filteredBangs.length === 1 ? "" : "s"} for "${searchTerm}"`;
     } else {
       bangsCount.textContent = `Showing all ${filteredBangs.length} bangs`;
     }
@@ -446,10 +495,13 @@ function showSettingsModal() {
 
   app.appendChild(overlay);
 
-  const closeButton = overlay.querySelector<HTMLButtonElement>("#close-settings")!;
+  const closeButton =
+    overlay.querySelector<HTMLButtonElement>("#close-settings")!;
   const copyButton = overlay.querySelector<HTMLButtonElement>("#copy-url")!;
   const urlInput = overlay.querySelector<HTMLInputElement>("#output-url")!;
-  const defaultBangInput = overlay.querySelector<HTMLInputElement>("#default-bang-input")!;
+  const defaultBangInput = overlay.querySelector<HTMLInputElement>(
+    "#default-bang-input",
+  )!;
   const toast = app.querySelector<HTMLDivElement>("#toast")!;
 
   function updateUrlInput() {
@@ -527,19 +579,22 @@ function noSearchDefaultPageRender() {
     const search = bangSearch.value.trim().toLowerCase();
     const normalizedSearch = search.startsWith("!") ? search.slice(1) : search;
 
-    const exactMatch = bangs.filter(b => b.t.toLowerCase() === normalizedSearch);
-    const partialMatches = bangs.filter(b =>
-      (search === "" ||
-        b.s.toLowerCase().includes(search) ||
-        b.t.toLowerCase().includes(normalizedSearch)) &&
-      b.t.toLowerCase() !== normalizedSearch
+    const exactMatch = bangs.filter(
+      (b) => b.t.toLowerCase() === normalizedSearch,
+    );
+    const partialMatches = bangs.filter(
+      (b) =>
+        (search === "" ||
+          b.s.toLowerCase().includes(search) ||
+          b.t.toLowerCase().includes(normalizedSearch)) &&
+        b.t.toLowerCase() !== normalizedSearch,
     );
     const filteredBangs = [...exactMatch, ...partialMatches];
 
     let optionsHtml = `<option value="">Google (!g, default)</option>`;
     if (filteredBangs.length > 0) {
       optionsHtml += filteredBangs
-        .map(b => `<option value="${b.t}">${b.s} (!${b.t})</option>`)
+        .map((b) => `<option value="${b.t}">${b.s} (!${b.t})</option>`)
         .join("");
     } else {
       optionsHtml += `<option value="" disabled style="color: #888; font-style: italic;">No bangs found</option>`;
@@ -577,10 +632,14 @@ function getMultipleBangUrls() {
     return null;
   }
 
-  const bangCandidates = bangMatches.map(match => match.slice(1).toLowerCase());
+  const bangCandidates = bangMatches.map((match) =>
+    match.slice(1).toLowerCase(),
+  );
 
   const urlDefaultBang = url.searchParams.get("defaultBang")?.toLowerCase();
-  const urlDefaultBangObj = urlDefaultBang ? bangs.find((b) => b.t === urlDefaultBang) : undefined;
+  const urlDefaultBangObj = urlDefaultBang
+    ? bangs.find((b) => b.t === urlDefaultBang)
+    : undefined;
 
   const LS_DEFAULT_BANG = localStorage.getItem("default-bang") ?? "g";
   const localStorageDefaultBangObj = bangs.find((b) => b.t === LS_DEFAULT_BANG);
@@ -590,7 +649,7 @@ function getMultipleBangUrls() {
   if (cleanQuery === "") {
     const urls: string[] = [];
 
-    bangCandidates.forEach(bangCandidate => {
+    bangCandidates.forEach((bangCandidate) => {
       const selectedBang =
         bangs.find((b) => b.t === bangCandidate) ||
         urlDefaultBangObj ||
@@ -606,7 +665,7 @@ function getMultipleBangUrls() {
 
   const urls: string[] = [];
 
-  bangCandidates.forEach(bangCandidate => {
+  bangCandidates.forEach((bangCandidate) => {
     const selectedBang =
       bangs.find((b) => b.t === bangCandidate) ||
       urlDefaultBangObj ||
@@ -631,7 +690,7 @@ function openMultipleTabs(urls: string[]) {
 
   for (let i = 1; i < urls.length; i++) {
     setTimeout(() => {
-      window.open(urls[i], '_blank');
+      window.open(urls[i], "_blank");
     }, i * 100);
   }
 }
@@ -648,7 +707,9 @@ function getBangredirectUrl() {
   const bangCandidate = match?.[1]?.toLowerCase();
 
   const urlDefaultBang = url.searchParams.get("defaultBang")?.toLowerCase();
-  const urlDefaultBangObj = urlDefaultBang ? bangs.find((b) => b.t === urlDefaultBang) : undefined;
+  const urlDefaultBangObj = urlDefaultBang
+    ? bangs.find((b) => b.t === urlDefaultBang)
+    : undefined;
 
   const LS_DEFAULT_BANG = localStorage.getItem("default-bang") ?? "g";
   const localStorageDefaultBangObj = bangs.find((b) => b.t === LS_DEFAULT_BANG);
@@ -684,10 +745,11 @@ function doRedirect() {
     const searchTerm = bangMatch[2];
     if (searchTerm) {
       setTimeout(() => {
-        const bangsSearch = document.querySelector<HTMLInputElement>("#bangs-search");
+        const bangsSearch =
+          document.querySelector<HTMLInputElement>("#bangs-search");
         if (bangsSearch) {
           bangsSearch.value = searchTerm;
-          bangsSearch.dispatchEvent(new Event('input'));
+          bangsSearch.dispatchEvent(new Event("input"));
         }
       }, 100);
     }
