@@ -3,6 +3,15 @@
 export const bangs = [
   {
     "c": "Online Services",
+    "d": "skills.sh",
+    "r": 0,
+    "s": "Skills.sh",
+    "sc": "AI",
+    "t": "skills",
+    "u": "https://skills.sh/?q={{{s}}}"
+  },
+  {
+    "c": "Online Services",
     "d": "claude.ai",
     "r": 0,
     "s": "Claude AI",
